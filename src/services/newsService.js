@@ -64,3 +64,4 @@ async function searchNews(query, newsConfig = env.apis.news) {
 module.exports = {
     searchNews,
 };
+

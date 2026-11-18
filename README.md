@@ -140,3 +140,24 @@ npm run dev
 npm start
 ```
 
+---
+
+## External API Integrations (Phase 10)
+
+All external API credentials are **global to the bot** and loaded exclusively from `.env` via `src/config/env.js` (never stored per group in `GroupSettings` or exposed in logs/messages).
+
+| Command | Provider | API Key Required? | Cooldown | Notes |
+| --- | --- | --- | --- | --- |
+| `/weather <city>` | Open-Meteo | No (keyless) | 5s | Returns °C/°F, humidity, wind, condition |
+| `/ai <prompt>` | OpenAI-compatible (`AI_PROVIDER`) | **Yes** (`AI_API_KEY`) | 15s + single-flight | Configurable `AI_MODEL` & `AI_BASE_URL`; truncates >3800 chars |
+| `/github <user\|owner/repo>` | GitHub REST API | Optional (`GITHUB_TOKEN`) | 5s | Unauthenticated limit: 60 req/hr |
+| `/npm <package>` | NPM Registry + Downloads API | No (keyless) | 5s | Latest version, author, weekly downloads |
+| `/news <topic>` | GNews / NewsAPI (`NEWS_PROVIDER`) | **Yes** (`NEWS_API_KEY`) | 15s + single-flight | Returns up to 5 articles |
+| `/translate <lang> <text>` | MyMemory (default) or LibreTranslate | Optional (`TRANSLATE_API_KEY`) | 10s + single-flight | MyMemory has daily free-tier limits |
+| `/currency <amt> <from> <to>` | Frankfurter (ECB) | No (keyless) | 5s | ECB reference rates |
+| `/shorten <url>` | is.gd | No (keyless) | 10s + single-flight | Blocks non-HTTP(S), credentials, and private/localhost IPs |
+| `/qr <text\|url>` | Local `qrcode` library | No (offline) | 5s | Generates PNG locally without external requests |
+
+When an optional API key (`AI_API_KEY`, `NEWS_API_KEY`) is missing, the bot starts normally and returns a clear configuration notice if that command is invoked.
+
+

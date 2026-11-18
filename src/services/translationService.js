@@ -97,3 +97,4 @@ module.exports = {
     MAX_TEXT_LENGTH,
     translateText,
 };
+

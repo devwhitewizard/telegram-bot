@@ -28,3 +28,4 @@ module.exports = {
     MAX_QR_LENGTH,
     generateQrPng,
 };
+

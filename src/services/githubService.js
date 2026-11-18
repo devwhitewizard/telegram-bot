@@ -80,3 +80,4 @@ async function lookupGithub(target) {
 module.exports = {
     lookupGithub,
 };
+

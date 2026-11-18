@@ -30,6 +30,7 @@
     "dotenv": "^18.0.9",
     "node-cron": "^3.0.3",
     "pino": "^9.6.0",
+    "pino-roll": "^2.1.0",
     "qrcode": "^1.5.4",
     "telegraf": "^4.16.3"
   },
