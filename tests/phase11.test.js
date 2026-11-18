@@ -99,6 +99,7 @@ describe("Phase 11: Logging & Monitoring", () => {
 
     test("healthServer serves GET /health and shuts down cleanly", async () => {
         const server = startHealthServer({ host: "127.0.0.1", port: 0 });
+        await new Promise((resolve) => server.once("listening", resolve));
         const { port } = server.address();
 
         try {
@@ -111,9 +112,26 @@ describe("Phase 11: Logging & Monitoring", () => {
         }
     });
 
-    test("discovers /health command", () => {
+    test("discovers /health command and /help outputs all commands within Telegram limits", async () => {
         const bot = createBot("123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11");
         expect(bot.context.commands.has("health")).toBe(true);
+
+        const helpCmd = bot.context.commands.get("help");
+        const reply = jest.fn().mockResolvedValue(true);
+        await helpCmd.execute({
+            commands: bot.context.commands,
+            message: { text: "/help" },
+            reply,
+        });
+
+        expect(reply.mock.calls.length).toBeGreaterThanOrEqual(1);
+        const fullOutput = reply.mock.calls.map((c) => c[0]).join("\n");
+        for (const call of reply.mock.calls) {
+            expect(call[0].length).toBeLessThanOrEqual(4096);
+        }
+        for (const cmdName of bot.context.commands.keys()) {
+            expect(fullOutput).toContain(`/${cmdName}`);
+        }
     });
 });
 
