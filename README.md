@@ -160,4 +160,87 @@ All external API credentials are **global to the bot** and loaded exclusively fr
 
 When an optional API key (`AI_API_KEY`, `NEWS_API_KEY`) is missing, the bot starts normally and returns a clear configuration notice if that command is invoked.
 
+---
+
+## Deployment Guide
+
+### 1. Local Environment
+
+1. **Clone & install dependencies:**
+   ```bash
+   git clone <your-repo-url>
+   cd telegram-group-bot
+   npm install
+   ```
+2. **Create `.env` from `.env.example`:**
+   ```bash
+   cp .env.example .env
+   ```
+   Fill in `BOT_TOKEN`, `BOT_USERNAME`, and `DATABASE_URL="file:./dev.db"`.
+3. **Generate Prisma Client & apply migrations:**
+   ```bash
+   npm run prisma:generate
+   npm run prisma:migrate -- --name init
+   ```
+4. **Start the bot:**
+   ```bash
+   npm run dev    # development (auto-reload)
+   npm start      # production
+   ```
+
+---
+
+### 2. Deploy to Render
+
+> **Important (Database Persistence):** Render's filesystem is ephemeral on free/standard instances, so a local SQLite file (`dev.db`) will reset on every redeploy. For persistent data on Render, create a **Render PostgreSQL** database, change `provider = "sqlite"` to `provider = "postgresql"` in `src/database/prisma/schema.prisma`, and use the PostgreSQL connection string for `DATABASE_URL`.
+
+1. Push your repository to GitHub/GitLab.
+2. In the Render Dashboard, click **New +** → **Background Worker** (recommended for long polling; no public port needed).
+3. Connect your repository and configure:
+   - **Build Command:**
+     ```bash
+     npm install && npm run prisma:generate && npm run prisma:deploy
+     ```
+   - **Start Command:**
+     ```bash
+     npm start
+     ```
+4. Add **Environment Variables** in Render:
+   - `NODE_ENV=production`
+   - `BOT_TOKEN=<your_telegram_bot_token>`
+   - `BOT_USERNAME=<your_bot_username>`
+   - `DATABASE_URL=<your_render_postgres_url_or_sqlite_file_url>`
+5. Click **Create Background Worker**.
+
+---
+
+### 3. Deploy to Heroku
+
+> **Important (Database Persistence):** Heroku's filesystem is ephemeral, so use **Heroku Postgres** instead of SQLite in production. Update `provider = "postgresql"` in `src/database/prisma/schema.prisma` and commit that change before pushing.
+
+1. Ensure `Procfile` is present in the project root (`worker: npm start`).
+2. Create the Heroku app and attach PostgreSQL:
+   ```bash
+   heroku create your-bot-app-name
+   heroku addons:create heroku-postgresql:essential-0
+   ```
+3. Set the required environment variables:
+   ```bash
+   heroku config:set NODE_ENV=production
+   heroku config:set BOT_TOKEN=your_telegram_bot_token
+   heroku config:set BOT_USERNAME=your_bot_username
+   ```
+   *(Heroku automatically sets `DATABASE_URL` when you attach `heroku-postgresql`.)*
+4. Deploy and run Prisma migrations:
+   ```bash
+   git push heroku main
+   heroku run npm run prisma:deploy
+   heroku ps:scale worker=1
+   ```
+5. View logs:
+   ```bash
+   heroku logs --tail
+   ```
+
+
 
