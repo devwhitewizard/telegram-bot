@@ -19,11 +19,13 @@ const {
     startEngagementCleanupJob,
 } = require("./jobs/engagementCleanupJob");
 const { flushActivityBuffer } = require("./services/activityService");
+const { startHealthServer, stopHealthServer } = require("./services/healthServer");
 const { createChildLogger } = require("./utils/logger");
 
 const appLogger = createChildLogger("bootstrap");
 
 let botInstance = null;
+let healthServer = null;
 let scheduledJobs = [];
 let isShuttingDown = false;
 
@@ -51,6 +53,8 @@ async function shutdown(signal, exitCode = 0) {
         if (botInstance) {
             botInstance.stop(signal);
         }
+        await stopHealthServer(healthServer);
+        healthServer = null;
         await flushActivityBuffer();
         await disconnectDatabase();
         appLogger.info("Bot and database stopped cleanly");
@@ -110,6 +114,10 @@ async function bootstrap() {
         startEngagementCleanupJob(),
     ];
     appLogger.info({ jobCount: scheduledJobs.length }, "Scheduled moderation jobs started");
+
+    if (env.health.enabled) {
+        healthServer = startHealthServer(env.health);
+    }
 
     if (env.webhook.enabled) {
         await botInstance.launch({

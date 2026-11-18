@@ -1,5 +1,6 @@
 const cron = require("node-cron");
 const captchaRepository = require("../database/repositories/captchaRepository");
+const { runMonitoredJob } = require("./jobMonitor");
 const { createChildLogger } = require("../utils/logger");
 
 const jobLogger = createChildLogger("captchaCleanupJob");
@@ -62,12 +63,12 @@ function startCaptchaCleanupJob(bot, schedule = "*/30 * * * * *") {
         }
         isRunning = true;
         try {
-            const count = await processExpiredCaptchas(bot);
+            const count = await runMonitoredJob("captchaCleanupJob", () =>
+                processExpiredCaptchas(bot)
+            );
             if (count > 0) {
                 jobLogger.info({ count }, "Cleaned up expired CAPTCHA challenges");
             }
-        } catch (err) {
-            jobLogger.error({ err }, "Error in captchaCleanupJob");
         } finally {
             isRunning = false;
         }

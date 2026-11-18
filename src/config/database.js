@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const { env } = require("./env");
+const metricsService = require("../services/metricsService");
 const { createChildLogger } = require("../utils/logger");
 
 const dbLogger = createChildLogger("database");
@@ -28,7 +29,8 @@ function getPrisma() {
         });
 
         prismaInstance.$on("error", (event) => {
-            dbLogger.error({ target: event.target }, event.message);
+            metricsService.recordDatabaseError();
+            dbLogger.error({ event: "database_error", target: event.target }, event.message);
         });
     }
 

@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const temporaryModerationRepository = require("../database/repositories/temporaryModerationRepository");
 const { RESTORED_PERMISSIONS } = require("../services/moderationService");
+const { runMonitoredJob } = require("./jobMonitor");
 const { createChildLogger } = require("../utils/logger");
 
 const jobLogger = createChildLogger("temporaryMuteJob");
@@ -61,12 +62,12 @@ function startTemporaryMuteJob(bot, schedule = "*/30 * * * * *") {
         }
         isRunning = true;
         try {
-            const count = await processExpiredMutes(bot);
+            const count = await runMonitoredJob("temporaryMuteJob", () =>
+                processExpiredMutes(bot)
+            );
             if (count > 0) {
                 jobLogger.info({ count }, "Processed expired temporary mutes");
             }
-        } catch (err) {
-            jobLogger.error({ err }, "Error in temporaryMuteJob");
         } finally {
             isRunning = false;
         }

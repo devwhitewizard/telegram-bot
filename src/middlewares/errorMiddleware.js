@@ -1,10 +1,12 @@
+const metricsService = require("../services/metricsService");
 const { createChildLogger } = require("../utils/logger");
 
 const mwLogger = createChildLogger("errorMiddleware");
 
 /**
  * Global Telegraf middleware that wraps downstream middleware & handlers.
- * Logs full error context internally while sending a safe generic message to Telegram users.
+ * Logs full error context internally (including Telegram API error codes)
+ * while sending a safe generic message to Telegram users.
  *
  * @param {import("telegraf").Context} ctx
  * @param {() => Promise<void>} next
@@ -13,15 +15,23 @@ async function errorMiddleware(ctx, next) {
     try {
         await next();
     } catch (err) {
+        metricsService.recordError(err);
+
+        const isTelegramError = Boolean(err?.name === "TelegramError" || err?.response?.error_code);
         mwLogger.error(
             {
                 err,
+                event: isTelegramError ? "telegram_api_error" : "unhandled_middleware_error",
+                telegramErrorCode: err?.response?.error_code,
+                telegramMethod: err?.on?.method,
                 updateType: ctx?.updateType,
                 chatId: ctx?.chat?.id,
                 userId: ctx?.from?.id,
                 text: ctx?.message?.text,
             },
-            "Middleware caught unhandled error"
+            isTelegramError
+                ? "Telegram API error during update processing"
+                : "Middleware caught unhandled error"
         );
 
         try {

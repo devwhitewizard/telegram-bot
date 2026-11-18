@@ -43,11 +43,27 @@ function buildTransport() {
 
     if (env.logToFile) {
         fs.mkdirSync(LOG_DIR, { recursive: true });
-        targets.push({
-            target: "pino/file",
-            level: env.logLevel,
-            options: { destination: LOG_FILE_PATH, mkdir: true },
-        });
+        try {
+            require.resolve("pino-roll");
+            targets.push({
+                target: "pino-roll",
+                level: env.logLevel,
+                options: {
+                    file: path.join(LOG_DIR, "app"),
+                    extension: ".log",
+                    frequency: "daily",
+                    size: env.logRotationSize,
+                    limit: { count: env.logRetentionDays },
+                    mkdir: true,
+                },
+            });
+        } catch {
+            targets.push({
+                target: "pino/file",
+                level: env.logLevel,
+                options: { destination: LOG_FILE_PATH, mkdir: true },
+            });
+        }
     }
 
     return pino.transport({ targets });

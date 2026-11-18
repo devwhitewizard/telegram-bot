@@ -190,6 +190,10 @@ async function banUser({
         reason,
         durationSeconds,
     });
+    svcLogger.info(
+        { event: "moderation_action", action: "BAN", groupId: group.id, targetUserId: targetDbUser.id, adminUserId: adminDbUser.id, durationSeconds },
+        "Moderation action recorded"
+    );
 
     return { targetDbUser, expiresAt };
 }
@@ -290,6 +294,10 @@ async function muteUser({
         reason,
         durationSeconds,
     });
+    svcLogger.info(
+        { event: "moderation_action", action: "MUTE", groupId: group.id, targetUserId: targetDbUser.id, adminUserId: adminDbUser.id, durationSeconds },
+        "Moderation action recorded"
+    );
 
     return { targetDbUser, expiresAt };
 }

@@ -6,6 +6,7 @@ const privateChatMiddleware = require("../middlewares/privateChatMiddleware");
 const adminMiddleware = require("../middlewares/adminMiddleware");
 const { createCooldownMiddleware } = require("../middlewares/cooldownMiddleware");
 const settingsService = require("../services/settingsService");
+const metricsService = require("../services/metricsService");
 const { createChildLogger } = require("../utils/logger");
 
 const cmdLogger = createChildLogger("commandRegistry");
@@ -159,6 +160,45 @@ function buildCommandMiddlewares(cmd) {
 }
 
 /**
+ * Wrap command execution to track usage counts, execution duration, and failures.
+ */
+function wrapCommandWithTracking(cmd) {
+    return async function trackedCommandExecute(ctx) {
+        const start = Date.now();
+        metricsService.recordCommandUsage(cmd.name);
+        try {
+            const result = await cmd.execute(ctx);
+            cmdLogger.info(
+                {
+                    event: "command_executed",
+                    command: cmd.name,
+                    category: cmd.category,
+                    chatId: ctx.chat?.id,
+                    chatType: ctx.chat?.type,
+                    userId: ctx.from?.id,
+                    durationMs: Date.now() - start,
+                },
+                "Command executed"
+            );
+            return result;
+        } catch (err) {
+            cmdLogger.error(
+                {
+                    err,
+                    event: "command_failed",
+                    command: cmd.name,
+                    chatId: ctx.chat?.id,
+                    userId: ctx.from?.id,
+                    durationMs: Date.now() - start,
+                },
+                "Command execution failed"
+            );
+            throw err;
+        }
+    };
+}
+
+/**
  * Register all discovered commands on a Telegraf bot instance.
  *
  * @param {import("telegraf").Telegraf} bot
@@ -173,16 +213,17 @@ function registerCommands(bot, commandsDir = __dirname) {
 
     for (const cmd of commands.values()) {
         const middlewares = buildCommandMiddlewares(cmd);
+        const trackedExecute = wrapCommandWithTracking(cmd);
         const triggers = [cmd.name, ...(Array.isArray(cmd.aliases) ? cmd.aliases : [])];
 
         for (const trigger of triggers) {
             const cleanTrigger = trigger.trim().toLowerCase().replace(/^\//, "");
             if (cleanTrigger === "start") {
-                bot.start(...middlewares, cmd.execute);
+                bot.start(...middlewares, trackedExecute);
             } else if (cleanTrigger === "help") {
-                bot.help(...middlewares, cmd.execute);
+                bot.help(...middlewares, trackedExecute);
             } else {
-                bot.command(cleanTrigger, ...middlewares, cmd.execute);
+                bot.command(cleanTrigger, ...middlewares, trackedExecute);
             }
         }
 

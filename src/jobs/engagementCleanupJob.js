@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const activityService = require("../services/activityService");
 const gameSessionRepository = require("../database/repositories/gameSessionRepository");
+const { runMonitoredJob } = require("./jobMonitor");
 const { createChildLogger } = require("../utils/logger");
 
 const jobLogger = createChildLogger("engagementCleanupJob");
@@ -21,12 +22,12 @@ function startEngagementCleanupJob(schedule = "*/30 * * * * *") {
         if (isRunning) return;
         isRunning = true;
         try {
-            const { expiredGames } = await runEngagementMaintenance();
-            if (expiredGames > 0) {
-                jobLogger.debug({ expiredGames }, "Expired overdue game sessions");
+            const result = await runMonitoredJob("engagementCleanupJob", () =>
+                runEngagementMaintenance()
+            );
+            if (result?.expiredGames > 0) {
+                jobLogger.debug({ expiredGames: result.expiredGames }, "Expired overdue game sessions");
             }
-        } catch (err) {
-            jobLogger.error({ err }, "Error in engagementCleanupJob");
         } finally {
             isRunning = false;
         }

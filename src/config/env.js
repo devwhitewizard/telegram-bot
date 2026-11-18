@@ -71,7 +71,20 @@ function loadEnv(sourceEnv = process.env) {
         botUsername: (sourceEnv.BOT_USERNAME || "").trim().replace(/^@/, ""),
         logLevel: (sourceEnv.LOG_LEVEL || "info").trim().toLowerCase(),
         logToFile: parseBoolean(sourceEnv.LOG_TO_FILE, false),
+        logRotationSize: (sourceEnv.LOG_ROTATION_SIZE || "10m").trim(),
+        logRetentionDays: Math.max(1, parseInteger(sourceEnv.LOG_RETENTION_DAYS, 7)),
+        botOwnerIds: Object.freeze(
+            (sourceEnv.BOT_OWNER_IDS || "")
+                .split(",")
+                .map((id) => id.trim())
+                .filter((id) => /^\d+$/.test(id))
+        ),
         databaseUrl: (sourceEnv.DATABASE_URL || "").trim(),
+        health: Object.freeze({
+            enabled: parseBoolean(sourceEnv.HEALTH_ENABLED, false),
+            host: (sourceEnv.HEALTH_HOST || "127.0.0.1").trim(),
+            port: parseInteger(sourceEnv.HEALTH_PORT, 3001),
+        }),
         webhook: Object.freeze({
             enabled: webhookEnabled,
             domain: webhookDomain,

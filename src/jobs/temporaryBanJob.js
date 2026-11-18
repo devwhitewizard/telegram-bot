@@ -1,5 +1,6 @@
 const cron = require("node-cron");
 const temporaryModerationRepository = require("../database/repositories/temporaryModerationRepository");
+const { runMonitoredJob } = require("./jobMonitor");
 const { createChildLogger } = require("../utils/logger");
 
 const jobLogger = createChildLogger("temporaryBanJob");
@@ -55,12 +56,12 @@ function startTemporaryBanJob(bot, schedule = "*/30 * * * * *") {
         }
         isRunning = true;
         try {
-            const count = await processExpiredBans(bot);
+            const count = await runMonitoredJob("temporaryBanJob", () =>
+                processExpiredBans(bot)
+            );
             if (count > 0) {
                 jobLogger.info({ count }, "Processed expired temporary bans");
             }
-        } catch (err) {
-            jobLogger.error({ err }, "Error in temporaryBanJob");
         } finally {
             isRunning = false;
         }
