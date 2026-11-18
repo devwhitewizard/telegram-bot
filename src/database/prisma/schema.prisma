@@ -1,0 +1,293 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// SQLite is used for local/dev.
+// To migrate to PostgreSQL later, change provider to "postgresql"
+// and point DATABASE_URL to your PostgreSQL connection string.
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  telegramId BigInt   @unique
+  username   String?
+  firstName  String
+  lastName   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  warningsReceived     Warning[]             @relation("UserWarnings")
+  warningsIssued       Warning[]             @relation("IssuedWarnings")
+  moderationTargets    ModerationLog[]       @relation("ModerationTarget")
+  moderationActions    ModerationLog[]       @relation("ModerationAdmin")
+  gameScores           GameScore[]
+  playerStats          PlayerStats[]
+  hostedGames          GameSession[]
+  userActivities       UserActivity[]
+  temporaryModerations TemporaryModeration[]
+  captchaVerifications CaptchaVerification[]
+  trustedInGroups      TrustedUser[]
+
+  @@index([username])
+}
+
+model Group {
+  id         Int      @id @default(autoincrement())
+  telegramId BigInt   @unique
+  title      String
+  username   String?
+  type       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  settings             GroupSettings?
+  warnings             Warning[]
+  moderationLogs       ModerationLog[]
+  customCommands       CustomCommand[]
+  gameScores           GameScore[]
+  playerStats          PlayerStats[]
+  gameSessions         GameSession[]
+  userActivities       UserActivity[]
+  dailyActivities      DailyActivity[]
+  blockedWords         BlockedWord[]
+  temporaryModerations TemporaryModeration[]
+  captchaVerifications CaptchaVerification[]
+  trustedUsers         TrustedUser[]
+
+  @@index([type])
+}
+
+model GroupSettings {
+  id                     Int      @id @default(autoincrement())
+  groupId                Int      @unique
+  group                  Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  welcomeEnabled         Boolean  @default(true)
+  goodbyeEnabled         Boolean  @default(false)
+  antiSpamEnabled        Boolean  @default(false)
+  antiFloodEnabled       Boolean  @default(false)
+  antiLinkEnabled        Boolean  @default(false)
+  badWordFilterEnabled   Boolean  @default(false)
+  captchaEnabled         Boolean  @default(false)
+  antiRaidEnabled        Boolean  @default(false)
+  raidModeActive         Boolean  @default(false)
+  welcomeMessage            String?
+  goodbyeMessage            String?
+  welcomeImageUrl           String?
+  welcomeDeleteAfterSeconds Int      @default(0)
+  goodbyeDeleteAfterSeconds Int      @default(0)
+  activityTrackingEnabled   Boolean  @default(true)
+  gamesEnabled              Boolean  @default(true)
+  funEnabled                Boolean  @default(true)
+  commandPermissions        String   @default("{}")
+  rules                     String?
+  maxWarnings            Int      @default(3)
+  warnAction             String   @default("MUTE")
+  warnMuteMinutes        Int      @default(60)
+  antiSpamThreshold      Int      @default(3)
+  antiSpamWindowSeconds  Int      @default(30)
+  antiFloodMaxMessages   Int      @default(5)
+  antiFloodWindowSeconds Int      @default(5)
+  antiFloodAction        String   @default("MUTE")
+  antiLinkAction         String   @default("DELETE")
+  allowedDomains         String   @default("[]")
+  raidJoinThreshold      Int      @default(10)
+  raidWindowSeconds      Int      @default(30)
+  captchaTimeoutSeconds  Int      @default(120)
+  captchaAction          String   @default("KICK")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+model Warning {
+  id        Int      @id @default(autoincrement())
+  groupId   Int
+  userId    Int
+  reason    String?
+  issuedBy  Int
+  createdAt DateTime @default(now())
+
+  group  Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user   User  @relation("UserWarnings", fields: [userId], references: [id], onDelete: Cascade)
+  issuer User  @relation("IssuedWarnings", fields: [issuedBy], references: [id], onDelete: Cascade)
+
+  @@index([groupId, userId])
+  @@index([createdAt])
+}
+
+model ModerationLog {
+  id              Int      @id @default(autoincrement())
+  groupId         Int
+  targetUserId    Int
+  adminUserId     Int
+  action          String
+  reason          String?
+  durationSeconds Int?
+  createdAt       DateTime @default(now())
+
+  group      Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  targetUser User  @relation("ModerationTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  adminUser  User  @relation("ModerationAdmin", fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+  @@index([targetUserId])
+  @@index([action])
+}
+
+model TemporaryModeration {
+  id        Int      @id @default(autoincrement())
+  groupId   Int
+  userId    Int
+  action    String
+  reason    String?
+  expiresAt DateTime
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([active, expiresAt])
+  @@index([groupId, userId, action, active])
+}
+
+model CaptchaVerification {
+  id             Int      @id @default(autoincrement())
+  groupId        Int
+  userId         Int
+  expectedAnswer String
+  messageId      Int?
+  expiresAt      DateTime
+  verified       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([verified, expiresAt])
+}
+
+model TrustedUser {
+  id        Int      @id @default(autoincrement())
+  groupId   Int
+  userId    Int
+  addedBy   Int?
+  createdAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model CustomCommand {
+  id        Int      @id @default(autoincrement())
+  groupId   Int
+  trigger   String
+  response  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, trigger])
+}
+
+model GameScore {
+  id        Int      @id @default(autoincrement())
+  groupId   Int
+  userId    Int
+  game      String
+  score     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, game, score])
+  @@index([userId, game])
+}
+
+model BlockedWord {
+  id        Int      @id @default(autoincrement())
+  groupId   Int
+  word      String
+  createdAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, word])
+}
+
+model UserActivity {
+  id           Int      @id @default(autoincrement())
+  groupId      Int
+  userId       Int
+  messageCount Int      @default(0)
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId, messageCount])
+}
+
+model DailyActivity {
+  id           Int      @id @default(autoincrement())
+  groupId      Int
+  dateKey      String
+  messageCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, dateKey])
+  @@index([groupId, dateKey])
+}
+
+model GameSession {
+  id         Int      @id @default(autoincrement())
+  groupId    Int
+  hostUserId Int
+  gameType   String
+  status     String   @default("ACTIVE")
+  stateJson  String
+  messageId  Int?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  host  User  @relation(fields: [hostUserId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, status, expiresAt])
+  @@index([groupId, gameType, status])
+}
+
+model PlayerStats {
+  id           Int      @id @default(autoincrement())
+  groupId      Int
+  userId       Int
+  score        Int      @default(0)
+  wins         Int      @default(0)
+  losses       Int      @default(0)
+  streak       Int      @default(0)
+  bestStreak   Int      @default(0)
+  lastDailyKey String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId, score])
+}

@@ -1,0 +1,41 @@
+{
+  "name": "telegram-group-bot",
+  "version": "1.0.0",
+  "description": "Modular Telegram Group Management and Entertainment Bot built with Node.js, Telegraf, and Prisma",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "jest --runInBand",
+    "prisma:generate": "prisma generate --schema=src/database/prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema=src/database/prisma/schema.prisma",
+    "prisma:deploy": "prisma migrate deploy --schema=src/database/prisma/schema.prisma",
+    "prisma:studio": "prisma studio --schema=src/database/prisma/schema.prisma",
+    "db:push": "prisma db push --schema=src/database/prisma/schema.prisma"
+  },
+  "keywords": [
+    "telegram",
+    "telegraf",
+    "bot",
+    "group-management",
+    "prisma",
+    "sqlite",
+    "postgresql"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^6.6.0",
+    "axios": "^1.8.4",
+    "dotenv": "^18.0.9",
+    "node-cron": "^3.0.3",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "pino-pretty": "^13.0.0",
+    "prisma": "^6.6.0"
+  }
+}

@@ -1,0 +1,9 @@
+.env
+node_modules/
+logs/*.log
+coverage/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+src/database/prisma/migrations/*.db
